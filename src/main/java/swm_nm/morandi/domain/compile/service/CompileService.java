@@ -30,7 +30,6 @@ public class CompileService {
         try {
             // File codeFile = new File("temp.py");
             // code = new String(Files.readAllBytes(codeFile.toPath()), StandardCharsets.UTF_8);
-
             ProcessBuilder pb = new ProcessBuilder("python3", "-c", code);
             pb.redirectErrorStream(true);
 

@@ -1,0 +1,78 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+# This workflow will build a Java project with Gradle and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-gradle
+
+name: CICD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: morandi-compile
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  EC2_BASTION_HOST: ${{ secrets.EC2_BASTION_HOST }}
+  EC2_BACKEND_HOST: ${{ secrets.EC2_COMPILE_HOST }} # EC2 인스턴스의 Private IP
+  GITHUB_SHA: ${{ github.sha }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Gradle 빌드를 추가합니다.
+      - name: Set up JDK 11
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+
+      # GitHub Secret에서 application-prod.yml 내용을 불러와 파일로 저장
+      - name: Create application-prod.yml from GitHub Secret
+        run: echo "${{ secrets.APPLICATION_YML }}" > src/main/resources/application.yml
+
+
+      - name: Build with Gradle
+        run: ./gradlew clean bootJar -x test
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true # AWS 계정 ID를 마스킹하여 보안 강화
+
+      - name: Login to Public ECR
+        run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/s7z8j0e6
+
+      - name: Build Docker Image
+        run: docker build -t morandi-compile .
+
+      - name: Tag Docker Image
+        run: docker tag morandi-compile:latest ${{ env.ECR_REGISTRY }}:latest
+
+      - name: Push Docker Image to ECR
+        run: docker push ${{ env.ECR_REGISTRY }}:latest
+
+      - name: appleboy SSH and Deploy to EC2
+        uses: appleboy/ssh-action@master # ssh 접속하는 오픈소스
+        with:
+          host: ${{ env.EC2_BASTION_HOST }}
+          debug: true
+          username: ubuntu
+          key: ${{ secrets.SSH_SECRET_ACCESS_KEY }}
+          port: 22
+          envs: EC2_COMPILE_HOST,GITHUB_SHA,ECR_REGISTRY
+          script: |
+            ssh -i ~/.ssh/swm-nm-morandi.pem -o StrictHostKeyChecking=no ubuntu@$EC2_COMPILE_HOST 'bash /home/ubuntu/morandi-compile/deploy.sh'
