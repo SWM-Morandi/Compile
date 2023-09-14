@@ -16,7 +16,7 @@ env:
   ECR_REPOSITORY: morandi-compile
   ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
   EC2_BASTION_HOST: ${{ secrets.EC2_BASTION_HOST }}
-  EC2_BACKEND_HOST: ${{ secrets.EC2_COMPILE_HOST }} # EC2 인스턴스의 Private IP
+  EC2_COMPILE_HOST: ${{ secrets.EC2_COMPILE_HOST }} # EC2 인스턴스의 Private IP
   GITHUB_SHA: ${{ github.sha }}
 
 permissions:
