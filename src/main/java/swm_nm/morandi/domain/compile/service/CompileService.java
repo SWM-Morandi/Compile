@@ -1,5 +1,6 @@
 package swm_nm.morandi.domain.compile.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import swm_nm.morandi.domain.compile.dto.InputDto;
 import swm_nm.morandi.domain.compile.dto.OutputDto;
@@ -10,6 +11,7 @@ import java.nio.file.Files;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@Slf4j
 public class CompileService {
     public OutputDto compile(InputDto inputDto) {
         String input = inputDto.getInput();
@@ -93,22 +95,23 @@ public class CompileService {
     }
 
     private OutputDto runCpp(String code, String input) {
-
         OutputDto outputDto = new OutputDto();
         try {
+            log.info("ErrorPoint 1");
             String tempFileName = "temp.cpp";
-            saveCodeToFile(tempFileName, code);
+            // saveCodeToFile(tempFileName, code);
 
             String executableFileName = "temp.out";
-            String compileCommand = "g++ -std=c++17 " + tempFileName + " -o " + executableFileName;
+            String compileCommand = "g++ -std=c++14 " + tempFileName + " -o " + executableFileName;
             Process compileProcess = Runtime.getRuntime().exec(compileCommand);
+            log.info("ErrorPoint 2");
             compileProcess.waitFor();
-
+            log.info("ErrorPoint 3");
             if (compileProcess.exitValue() != 0) {
+                log.info("ErrorPoint 4");
                 BufferedReader errorReader = new BufferedReader(new InputStreamReader(compileProcess.getErrorStream()));
                 StringBuilder errorOutput = new StringBuilder();
                 String errorLine;
-
                 while ((errorLine = errorReader.readLine()) != null) {
                     errorOutput.append(errorLine).append("\n");
                 }
@@ -117,19 +120,23 @@ public class CompileService {
                 outputDto.setRunTime(null);
                 return outputDto;
             }
-
+            log.info("ErrorPoint 5");
             String runCommand = "./" + executableFileName;
+            log.info("ErrorPoint 6");
             Process runProcess = Runtime.getRuntime().exec(runCommand);
+            log.info("ErrorPoint 7");
+
+            OutputStreamWriter utf8Writer = new OutputStreamWriter(runProcess.getOutputStream(), StandardCharsets.UTF_8);
 
             if (input != null) {
-                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(runProcess.getOutputStream()));
+                BufferedWriter writer = new BufferedWriter(utf8Writer);
                 writer.write(input);
                 writer.newLine();
                 writer.flush();
                 writer.close();
             }
-
-            BufferedReader reader = new BufferedReader(new InputStreamReader(runProcess.getInputStream()));
+            log.info("ErrorPoint 8");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(runProcess.getInputStream(), StandardCharsets.UTF_8));
             StringBuilder output = new StringBuilder();
             String line;
             long startTime = System.currentTimeMillis();
@@ -144,9 +151,9 @@ public class CompileService {
                     return outputDto;
                 }
             }
-
-            int exitCode = runProcess.exitValue();
-
+            log.info("ErrorPoint 9");
+            int exitCode = runProcess.waitFor();
+            log.info("ErrorPoint 10");
             if (exitCode == 0) {
                 outputDto.setResult("성공");
                 outputDto.setOutput(output.toString());
@@ -172,7 +179,6 @@ public class CompileService {
             return outputDto;
         }
     }
-
     private void saveCodeToFile(String fileName, String code) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             writer.write(code);
