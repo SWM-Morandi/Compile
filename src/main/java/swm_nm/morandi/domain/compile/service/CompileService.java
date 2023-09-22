@@ -97,7 +97,7 @@ public class CompileService {
         OutputDto outputDto = new OutputDto();
         try {
             String tempFileName = "temp.cpp";
-            saveCodeToFile(tempFileName, code);
+            // saveCodeToFile(tempFileName, code);
 
             String executableFileName = "temp.out";
             String compileCommand = "g++ -std=c++14 " + tempFileName + " -o " + executableFileName;
@@ -144,13 +144,19 @@ public class CompileService {
                     return outputDto;
                 }
             }
-            
-            outputDto.setResult("성공");
-            outputDto.setOutput(output.toString());
-            
-            // 실행 시간 계산 및 설정 (현재 시간 - 시작 시간)
-            double elapsedTimeInSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            outputDto.setRunTime(elapsedTimeInSeconds);
+          
+            if (output.toString().equals("")) {
+                outputDto.setResult("실패");
+                outputDto.setOutput("코드 실행 중 오류가 발생했습니다.");
+            }
+            else {
+                outputDto.setResult("성공");
+                outputDto.setOutput(output.toString());
+
+                // 실행 시간 계산 및 설정 (현재 시간 - 시작 시간)
+                double elapsedTimeInSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+                outputDto.setRunTime(elapsedTimeInSeconds);
+            }
 
             return outputDto;
 
