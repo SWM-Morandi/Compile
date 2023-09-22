@@ -144,7 +144,7 @@ public class CompileService {
                     return outputDto;
                 }
             }
-
+          
             if (output.toString().equals("")) {
                 outputDto.setResult("실패");
                 outputDto.setOutput("코드 실행 중 오류가 발생했습니다.");
