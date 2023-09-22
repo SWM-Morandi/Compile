@@ -100,7 +100,7 @@ public class CompileService {
             saveCodeToFile(tempFileName, code);
 
             String executableFileName = "temp.out";
-            String compileCommand = "g++ -std=c++17 " + tempFileName + " -o " + executableFileName;
+            String compileCommand = "g++ -std=c++14 " + tempFileName + " -o " + executableFileName;
             Process compileProcess = Runtime.getRuntime().exec(compileCommand);
             compileProcess.waitFor();
 
