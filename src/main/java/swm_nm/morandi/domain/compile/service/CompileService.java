@@ -97,7 +97,7 @@ public class CompileService {
         OutputDto outputDto = new OutputDto();
         try {
             String tempFileName = "temp.cpp";
-            // saveCodeToFile(tempFileName, code);
+            saveCodeToFile(tempFileName, code);
 
             String executableFileName = "temp.out";
             String compileCommand = "g++ -std=c++14 " + tempFileName + " -o " + executableFileName;
@@ -135,7 +135,6 @@ public class CompileService {
             long startTime = System.currentTimeMillis();
             while ((line = reader.readLine()) != null) {
                 output.append(line).append("\n");
-                System.out.println(System.currentTimeMillis() - startTime);
                 if (System.currentTimeMillis() - startTime > 10000) {
                     outputDto.setResult("실패");
                     outputDto.setOutput("시간 초과가 발생했습니다.");
