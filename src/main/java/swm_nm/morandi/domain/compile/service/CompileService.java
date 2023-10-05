@@ -4,39 +4,48 @@ import org.springframework.stereotype.Service;
 import swm_nm.morandi.domain.compile.dto.InputDto;
 import swm_nm.morandi.domain.compile.dto.OutputDto;
 
+import javax.persistence.ElementCollection;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 public class CompileService {
-    public OutputDto compile(InputDto inputDto) {
-        String input = inputDto.getInput();
+    public List<OutputDto> compile(InputDto inputDto) {
         String code = inputDto.getCode();
         String language = inputDto.getLanguage();
-        return getOutputDto(input, code, language);
+        List<String> input = inputDto.getInput();
+        List<String> output = inputDto.getOutput();
+        List<OutputDto> outputDtos = IntStream.range(0, input.size())
+                .mapToObj(i -> getOutputDto(input.get(i), output.get(i), code, language))
+                .collect(Collectors.toList());
+        return outputDtos;
     }
-    private OutputDto getOutputDto(String input, String code, String language) {
-        if (language.equals("Python")) return runPython(code, input);
-        else if (language.equals("Cpp")) return runCpp(code, input);
-        else if (language.equals("Java")) return runJava(code, input);
+    private OutputDto getOutputDto(String input, String output, String code, String language) {
+        if (language.equals("Python")) return runPython(code, input, output);
+        else if (language.equals("Cpp")) return runCpp(code, input, output);
+        else if (language.equals("Java")) return runJava(code, input, output);
         return null;
     }
-    private OutputDto runPython(String code, String input)
+    private OutputDto runPython(String code, String input, String output)
     {
         OutputDto outputDto = new OutputDto();
 
         try {
-            // File codeFile = new File("temp.py");
-            // code = new String(Files.readAllBytes(codeFile.toPath()), StandardCharsets.UTF_8);
+//             File codeFile = new File("temp.py");
+//             code = new String(Files.readAllBytes(codeFile.toPath()), StandardCharsets.UTF_8);
             ProcessBuilder pb = new ProcessBuilder("python3", "-c", code);
             pb.redirectErrorStream(true);
 
             Process p = pb.start();
 
-            // File inputFile = new File("input.txt");
-            // input = new String(Files.readAllBytes(inputFile.toPath()), StandardCharsets.UTF_8);
+//             File inputFile = new File("input.txt");
+//             input = new String(Files.readAllBytes(inputFile.toPath()), StandardCharsets.UTF_8);
 
             if (input != null) {
                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(p.getOutputStream()));
@@ -47,18 +56,17 @@ public class CompileService {
             }
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            StringBuilder output = new StringBuilder();
+            StringBuilder result = new StringBuilder();
             StringBuilder errorOutput = new StringBuilder();
 
             String line;
             long startTime = System.currentTimeMillis();
             while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+                result.append(line).append("\n");
                 if (System.currentTimeMillis() - startTime > 10000) {
-                    outputDto.setResult("실패");
-                    outputDto.setOutput("시간 초과가 발생했습니다.");
-                    outputDto.setErrorOutput(null);
-                    outputDto.setRunTime(null);
+                    outputDto.setResult("시간 초과");
+                    outputDto.setOutput(null);
+                    outputDto.setExecuteTime(10.0);
                     return outputDto;
                 }
             }
@@ -66,17 +74,23 @@ public class CompileService {
             int exitCode = p.waitFor();
 
             if (exitCode == 0) {
-                outputDto.setResult("성공");
-                outputDto.setOutput(output.toString());
-                // 실행 시간 계산 및 설정 (현재 시간 - 시작 시간)
                 double elapsedTimeInSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                outputDto.setRunTime(elapsedTimeInSeconds);
+                if (String.valueOf(result).equals(output))
+                {
+                    outputDto.setResult("성공");
+                    outputDto.setOutput(String.valueOf(result));
+                    outputDto.setExecuteTime(elapsedTimeInSeconds);
+                }
+                else {
+                    outputDto.setResult("실패");
+                    outputDto.setOutput(String.valueOf(result));
+                    outputDto.setExecuteTime(elapsedTimeInSeconds);
+                }
             } else {
                 // 실행 실패 (컴파일 에러 또는 런타임 에러 등)
-                outputDto.setResult("실패");
-                outputDto.setOutput("코드 실행에 실패했습니다.");
-                outputDto.setErrorOutput(output.toString());
-                outputDto.setRunTime(null);
+                outputDto.setResult("컴파일/런타임 에러");
+                outputDto.setOutput(null);
+                outputDto.setExecuteTime(0.0);
             }
 
             return outputDto;
@@ -84,15 +98,14 @@ public class CompileService {
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
             // 예외가 발생한 경우에도 outputDto를 채우고 반환
-            outputDto.setResult("실패");
-            outputDto.setOutput("코드 실행 중 오류가 발생했습니다.");
-            outputDto.setErrorOutput(e.getMessage());
-            outputDto.setRunTime(null);
+            outputDto.setResult("컴파일/런타임 에러");
+            outputDto.setOutput(null);
+            outputDto.setExecuteTime(0.0);
             return outputDto;
         }
     }
 
-    private OutputDto runCpp(String code, String input) {
+    private OutputDto runCpp(String code, String input, String output) {
 
         OutputDto outputDto = new OutputDto();
         try {
@@ -113,8 +126,9 @@ public class CompileService {
                     errorOutput.append(errorLine).append("\n");
                 }
 
-                outputDto.setErrorOutput(errorOutput.toString());
-                outputDto.setRunTime(null);
+                outputDto.setResult("컴파일/런타임 에러");
+                outputDto.setOutput(null);
+                outputDto.setExecuteTime(0.0);
                 return outputDto;
             }
 
@@ -130,41 +144,38 @@ public class CompileService {
             }
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(runProcess.getInputStream()));
-            StringBuilder output = new StringBuilder();
+            StringBuilder result = new StringBuilder();
             String line;
             long startTime = System.currentTimeMillis();
             while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+                result.append(line).append("\n");
                 if (System.currentTimeMillis() - startTime > 10000) {
-                    outputDto.setResult("실패");
-                    outputDto.setOutput("시간 초과가 발생했습니다.");
-                    outputDto.setErrorOutput(null);
-                    outputDto.setRunTime(null);
+                    outputDto.setResult("시간 초과");
+                    outputDto.setOutput(null);
+                    outputDto.setExecuteTime(10.0);
                     return outputDto;
                 }
             }
-          
-            if (output.toString().equals("")) {
-                outputDto.setResult("실패");
-                outputDto.setOutput("코드 실행 중 오류가 발생했습니다.");
+
+            double elapsedTimeInSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
+            if (String.valueOf(result).equals(output)) {
+                outputDto.setResult("성공");
+                outputDto.setOutput(String.valueOf(result));
+                outputDto.setExecuteTime(elapsedTimeInSeconds);
             }
             else {
-                outputDto.setResult("성공");
-                outputDto.setOutput(output.toString());
-
-                // 실행 시간 계산 및 설정 (현재 시간 - 시작 시간)
-                double elapsedTimeInSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                outputDto.setRunTime(elapsedTimeInSeconds);
+                outputDto.setResult("실패");
+                outputDto.setOutput(String.valueOf(result));
+                outputDto.setExecuteTime(elapsedTimeInSeconds);
             }
 
             return outputDto;
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
-            outputDto.setResult("실패");
-            outputDto.setOutput("코드 실행 중 오류가 발생했습니다.");
-            outputDto.setErrorOutput(e.getMessage());
-            outputDto.setRunTime(null);
+            outputDto.setResult("컴파일/런타임 에러");
+            outputDto.setOutput(null);
+            outputDto.setExecuteTime(0.0);
             return outputDto;
         }
     }
@@ -178,11 +189,11 @@ public class CompileService {
         }
     }
 
-    private OutputDto runJava(String code, String input) {
+    private OutputDto runJava(String code, String input, String output) {
         OutputDto outputDto = new OutputDto();
         try {
             File javaFile = new File("Main.java");
-            // code = new String(Files.readAllBytes(javaFile.toPath()), StandardCharsets.UTF_8);
+             code = new String(Files.readAllBytes(javaFile.toPath()), StandardCharsets.UTF_8);
             Files.write(javaFile.toPath(), code.getBytes(StandardCharsets.UTF_8));
 
             // 컴파일된 클래스 파일 생성
@@ -202,10 +213,9 @@ public class CompileService {
             }
 
             if (compileOutput.length() > 0) {
-                outputDto.setResult("실패");
-                outputDto.setOutput("코드 실행 중 오류가 발생했습니다.");
-                outputDto.setErrorOutput(compileOutput.toString());
-                outputDto.setRunTime(null);
+                outputDto.setResult("컴파일/런타임 에러");
+                outputDto.setOutput(null);
+                outputDto.setExecuteTime(0.0);
                 return outputDto;
             }
 
@@ -229,16 +239,15 @@ public class CompileService {
             }
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            StringBuilder output = new StringBuilder();
+            StringBuilder result = new StringBuilder();
             String line;
             long startTime = System.currentTimeMillis();
             while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+                result.append(line).append("\n");
                 if (System.currentTimeMillis() - startTime > 10000) {
-                    outputDto.setResult("실패");
-                    outputDto.setOutput("시간 초과가 발생했습니다.");
-                    outputDto.setErrorOutput(null);
-                    outputDto.setRunTime(null);
+                    outputDto.setResult("시간 초과");
+                    outputDto.setOutput(null);
+                    outputDto.setExecuteTime(10.0);
                     return outputDto;
                 }
             }
@@ -246,27 +255,32 @@ public class CompileService {
             int exitValue = p.waitFor();
 
             if (exitValue == 0) {
-                // 프로세스가 성공적으로 종료되었을 경우
-                outputDto.setResult("성공");
-                outputDto.setOutput(output.toString());
                 double elapsedTimeInSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                outputDto.setRunTime(elapsedTimeInSeconds);
+                // 프로세스가 성공적으로 종료되었을 경우
+                if (String.valueOf(result).equals(output)) {
+                    outputDto.setResult("성공");
+                    outputDto.setOutput(String.valueOf(result));
+                    outputDto.setExecuteTime(elapsedTimeInSeconds);
+                }
+                else {
+                    outputDto.setResult("실패");
+                    outputDto.setOutput(String.valueOf(result));
+                    outputDto.setExecuteTime(elapsedTimeInSeconds);
+                }
             } else {
                 // 프로세스가 오류로 종료되었을 경우
-                outputDto.setResult("실패");
-                outputDto.setOutput("코드 실행 중 오류가 발생했습니다.");
-                outputDto.setErrorOutput(output.toString());
-                outputDto.setRunTime(null);
+                outputDto.setResult("컴파일/런타임 에러");
+                outputDto.setOutput(null);
+                outputDto.setExecuteTime(0.0);
             }
 
             return outputDto;
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
-            outputDto.setResult("실패");
-            outputDto.setOutput("코드 실행 중 오류가 발생했습니다.");
-            outputDto.setErrorOutput(e.getMessage());
-            outputDto.setRunTime(null);
+            outputDto.setResult("컴파일/런타임 에러");
+            outputDto.setOutput(null);
+            outputDto.setExecuteTime(0.0);
             return outputDto;
         }
     }
