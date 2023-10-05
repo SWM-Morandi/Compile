@@ -11,6 +11,8 @@ import swm_nm.morandi.domain.compile.dto.InputDto;
 import swm_nm.morandi.domain.compile.dto.OutputDto;
 import swm_nm.morandi.domain.compile.service.CompileService;
 
+import java.util.List;
+
 import static org.springframework.http.HttpStatus.OK;
 
 @RestController
@@ -20,8 +22,8 @@ public class CompileController {
 
     private final CompileService compileService;
     @PostMapping
-    public ResponseEntity<OutputDto> getCompileResult(@RequestBody InputDto inputDto) {
-        OutputDto outputDto = compileService.compile(inputDto);
+    public ResponseEntity<List<OutputDto>> getCompileResult(@RequestBody InputDto inputDto) {
+        List<OutputDto> outputDto = compileService.compile(inputDto);
         return new ResponseEntity<>(outputDto, OK);
     }
 }
