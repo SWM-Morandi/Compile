@@ -193,7 +193,7 @@ public class CompileService {
         OutputDto outputDto = new OutputDto();
         try {
             File javaFile = new File("Main.java");
-             code = new String(Files.readAllBytes(javaFile.toPath()), StandardCharsets.UTF_8);
+            //  code = new String(Files.readAllBytes(javaFile.toPath()), StandardCharsets.UTF_8);
             Files.write(javaFile.toPath(), code.getBytes(StandardCharsets.UTF_8));
 
             // 컴파일된 클래스 파일 생성
