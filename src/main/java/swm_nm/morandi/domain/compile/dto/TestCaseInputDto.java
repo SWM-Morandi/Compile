@@ -9,8 +9,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class InputDto {
+public class TestCaseInputDto {
     private String language;
     private String code;
-    private String input;
+    private List<String> input;
+    private List<String> output;
 }

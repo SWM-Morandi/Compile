@@ -3,6 +3,7 @@ package swm_nm.morandi.domain.compile.service;
 import org.springframework.stereotype.Service;
 import swm_nm.morandi.domain.compile.dto.InputDto;
 import swm_nm.morandi.domain.compile.dto.OutputDto;
+import swm_nm.morandi.domain.compile.dto.TestCaseInputDto;
 
 import javax.persistence.ElementCollection;
 import java.io.*;
@@ -16,16 +17,25 @@ import java.util.stream.IntStream;
 
 @Service
 public class CompileService {
-    public List<OutputDto> compile(InputDto inputDto) {
+
+    public OutputDto compile(InputDto inputDto) {
         String code = inputDto.getCode();
         String language = inputDto.getLanguage();
-        List<String> input = inputDto.getInput();
-        List<String> output = inputDto.getOutput();
+        String input = inputDto.getInput();
+        OutputDto outputDto = getOutputDto(input, "ACCEPT", code, language);
+        return outputDto;
+    }
+    public List<OutputDto> testCaseCompile(TestCaseInputDto testCaseInputDto) {
+        String code = testCaseInputDto.getCode();
+        String language = testCaseInputDto.getLanguage();
+        List<String> input = testCaseInputDto.getInput();
+        List<String> output = testCaseInputDto.getOutput();
         List<OutputDto> outputDtos = IntStream.range(0, input.size())
                 .mapToObj(i -> getOutputDto(input.get(i), output.get(i), code, language))
                 .collect(Collectors.toList());
         return outputDtos;
     }
+
     private OutputDto getOutputDto(String input, String output, String code, String language) {
         if (language.equals("Python")) return runPython(code, input, output);
         else if (language.equals("Cpp")) return runCpp(code, input, output);
@@ -75,7 +85,7 @@ public class CompileService {
 
             if (exitCode == 0) {
                 double elapsedTimeInSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-                if (String.valueOf(result).equals(output))
+                if (String.valueOf(result).equals(output) || output.equals("ACCEPT"))
                 {
                     outputDto.setResult("성공");
                     outputDto.setOutput(String.valueOf(result));
@@ -158,7 +168,7 @@ public class CompileService {
             }
 
             double elapsedTimeInSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-            if (String.valueOf(result).equals(output)) {
+            if (String.valueOf(result).equals(output) || output.equals("ACCEPT")) {
                 outputDto.setResult("성공");
                 outputDto.setOutput(String.valueOf(result));
                 outputDto.setExecuteTime(elapsedTimeInSeconds);
@@ -257,7 +267,7 @@ public class CompileService {
             if (exitValue == 0) {
                 double elapsedTimeInSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
                 // 프로세스가 성공적으로 종료되었을 경우
-                if (String.valueOf(result).equals(output)) {
+                if (String.valueOf(result).equals(output) || output.equals("ACCEPT")) {
                     outputDto.setResult("성공");
                     outputDto.setOutput(String.valueOf(result));
                     outputDto.setExecuteTime(elapsedTimeInSeconds);
