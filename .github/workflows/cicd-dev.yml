@@ -9,7 +9,7 @@ name: CICD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "dev" ]
 
 env:
   AWS_REGION: ap-northeast-2
