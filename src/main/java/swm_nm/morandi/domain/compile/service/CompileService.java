@@ -31,7 +31,7 @@ public class CompileService {
         List<String> input = testCaseInputDto.getInput();
         List<String> output = testCaseInputDto.getOutput();
         List<OutputDto> outputDtos = IntStream.range(0, input.size())
-                .mapToObj(i -> getOutputDto(input.get(i), output.get(i), code, language))
+                .mapToObj(i -> getOutputDto(input.get(i), output.get(i) + "\n", code, language))
                 .collect(Collectors.toList());
         return outputDtos;
     }
