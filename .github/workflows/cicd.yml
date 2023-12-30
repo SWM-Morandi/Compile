@@ -75,4 +75,4 @@ jobs:
           port: 22
           envs: EC2_COMPILE_HOST,GITHUB_SHA,ECR_REGISTRY
           script: |
-            ssh -i ~/.ssh/swm-nm-morandi.pem -o StrictHostKeyChecking=no ubuntu@$EC2_COMPILE_HOST 'bash /home/ubuntu/morandi-compile/deploy.sh'
+            ssh -o StrictHostKeyChecking=no ubuntu@$EC2_COMPILE_HOST 'bash /home/ubuntu/morandi-compile/deploy.sh'
